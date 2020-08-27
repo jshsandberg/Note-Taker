@@ -14,6 +14,21 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(express.static("public"))
 
+const dbNotes = JSON.parse(
+  fs.readFileSync(path.join(__dirname, "/db/db.json"), (err, data) => {
+      if (err) throw err;
+  })
+  );
+  
+  const dbUpdate = dbNotes => {
+  fs.writeFileSync(
+      path.join(__dirname, "/db/db.json"),
+      JSON.stringify(dbNotes),
+      err => {
+      if (err) throw err;
+      }
+  );
+  };
 
 app.get("/", function(req, res) {
   res.sendFile(path.join(__dirname, "./public/index.html"));
@@ -26,41 +41,33 @@ app.get("/notes", function(req, res) {
 
 });
 
-app.get("/savednotes", function(req, res) {
-  res.sendFile(path.join(__dirname, "savednotes.html"));
-
-
-});
 
 app.get("/api/notes", function(req, res) {
-    return res.json(notes);
+    return res.json(dbNotes);
   });
   
 
 
-app.post("/api/notes", function(req, res) {
+  app.post("/api/notes", function(req, res) {
+    let newNote = req.body;
+    let id = dbNotes.length;
+    newNote.id = id + 1;
+    dbNotes.push(newNote);
+    dbUpdate(dbNotes);
+    return res.json(dbNotes);
+    });
 
-  var newNotes = req.body;
 
-  console.log(newNotes);
+    app.delete("/api/notes/:id", (req, res) => {
+      let id = req.params.id;
+      delete dbNotes[id - 1];
+      var filter = dbNotes.filter(function (el) {
+        return el != null;
+      });
+      dbUpdate(filter);
+      res.send(dbNotes);
+      });
 
-  notes.push(newNotes);
-  fs.writeFile("./db/db.json", JSON.stringify(notes), function(err) {
-    if (err) 
-    throw error; 
-    res.json(newNotes);
-  } )
-  
-});
-
-app.delete("/api/notes/1", function(req, res) {
-  fs.readFile("./db/db.json", 'utf8', function (err,data) {
-    var formatted = data.replace(/This is the old line/g, 'This new line replaces the old line');
-fs.writeFile("your file", formatted, 'utf8', function (err) {
-    if (err) return console.log(err);
- });
-});
-})
 
 app.listen(PORT, function() {
   console.log("App listening on PORT " + PORT);
